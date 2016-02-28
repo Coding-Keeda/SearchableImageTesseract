@@ -1,0 +1,214 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>searchable image functionality using Tesseract and JQuery :: Coding Keeda</title>
+    @*https://github.com/charlesw/tesseract/issues/245*@
+    @*https://www.microsoft.com/en-us/download/confirmation.aspx?id=48145*@
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta http-equiv="CACHE-CONTROL" content="NO-CACHE" />
+    <meta http-equiv="PRAGMA" content="NO-CACHE" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="Content/bootstrap.min.css" rel="stylesheet">
+    <script src="Scripts/jquery-2.2.0.min.js"></script>
+
+    <style type="text/css">
+        .source_image {
+            position: absolute;
+        }
+
+        #outerdivhocr {
+            position: absolute;
+            top: 490px;
+            margin: 0px;
+            padding: 0px;
+        }
+    </style>
+    <script type="text/javascript">
+        //function to show file before uploading
+        function readURL(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+
+                reader.onload = function (e) {
+                    $('#img_hocr').attr('src', e.target.result);
+                }
+
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        $(document).on('change', '#imageFile', function () {
+            readURL(this);
+        });
+
+        //reset
+        $(document).on('click', '#restartButton', function () {
+            $('#outerdivhocr div.divSearch').remove();
+            $('#resultText').val('');
+            $('#img_hocr').attr('src', '');
+            $('#imageFile').val('');
+            $('#inputPanel').show();
+            $('#resultPanel').hide();
+            $('#meanConfidenceLabel').val('');
+            $('#txtsearchWord').val('');
+        });
+
+        //function to upload file
+        $(document).on('click', '#submitFile', function () {
+            var data = new FormData();
+            var element = document.getElementById('imageFile');
+            data.append('file', element.files[0]);
+
+            $.ajax({
+                url: '@Url.Action("postImage", "Home")',
+                type: 'POST',
+                success: function (data) {
+                    $('#resultText').val(data.html); 
+                    $('#divTessHOCR').html(data.html);
+                    $('#meanConfidenceLabel').text(data.mean);
+                    $('#inputPanel').hide();
+                    $('#resultPanel').show();
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.log(errorThrown);
+                },
+                data: data,
+                cache: false,
+                contentType: false,
+                processData: false
+            });
+        });
+
+
+        // This function used just because default Jquery function 'contains' is case sensitive
+        $.extend($.expr[":"], {
+            "containsIN": function (elem, i, match, array) {
+                return (elem.textContent || elem.innerText || "").toLowerCase().indexOf((match[3] || "").toLowerCase()) >= 0;
+            }
+        });
+
+
+        $(document).ready(function () {
+
+            $('#resultText').val('');
+            $('#inputPanel').show();
+            $('#resultPanel').hide();
+
+            if ($('#resultPanel').length > 0) {
+                $('#outerdivhocr').append($('#resultText').val());
+                $('.ocr_page').css('visibility', 'hidden');
+            }
+
+
+            //****Main Function to search keywords ******//
+            $(Document).on('click', '#btnSearchWord', function () {
+
+                $('#outerdivhocr div.divSearch').remove();
+
+                var SearchKeyWord = $('#txtsearchWord').val();
+                var searchedSpan = $("#divTessHOCR span.ocrx_word:containsIN('" + SearchKeyWord + "')");
+                var pagebbox = $('.ocr_page').attr('title').split(';')[1].split(' ');
+                var HOCR_PageWidth = pagebbox[4];
+                var HOCR_PageHeight = pagebbox[5];
+
+                var ImageWidth = $('#img_hocr').width();
+                var ImageHeight = $('#img_hocr').height();
+
+                var widthScale = ImageWidth / HOCR_PageWidth;
+                var HeightScale = ImageHeight / HOCR_PageHeight;
+
+                $.each(searchedSpan, function (key, value) {
+
+                    var TitleStyle = $(this).attr('title').split(' ');
+
+                    var left = parseInt(TitleStyle[1]);
+                    var top = parseInt(TitleStyle[2]);
+                    var right = parseInt(TitleStyle[3]);
+                    var bottom = parseInt(TitleStyle[4]);
+
+                    var width = Math.round((right - left) * widthScale);
+                    var height = Math.round((bottom - top) * HeightScale);
+
+                    left = Math.round(left * widthScale);
+                    top = Math.round(top * HeightScale);
+
+                    var DivSearch = $('<div></div>').addClass('divSearch');
+
+                    DivSearch.css(
+                        {
+                            'width': width + 'px',
+                            'height': height + 'px',
+                            'left': left + 'px',
+                            'top': top + 'px',
+                            'opacity': '0.7',
+                            'background-color': 'yellow',
+                            'visibility': 'visible',
+                            'position': 'absolute',
+                            'display': 'block'
+                        });
+
+                    $('#outerdivhocr').append(DivSearch);
+
+                });
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+
+        <div id="inputPanel">
+            <fieldset>
+                <legend>File Upload</legend>
+                <div class="form-group">
+                    <label id="Label1" for="imageFile">File:</label>
+                    <input class="form-control" type="file" id="imageFile" />
+
+                    <span class="help-block">1. Choose the file 2.Click Submit button 3.after that,input the keyword that you want to search and press Search Word button.</span>
+                </div>
+                <input id="submitFile" type="button" value="Submit" class="btn btn-default" />
+            </fieldset>
+        </div>
+        <div id="resultPanel">
+            <fieldset>
+                <legend>OCR Results</legend>
+                <div class="form-group">
+                    <label id="Label2" for="result">Mean Confidence:</label>
+                    <label class="form-control" id="meanConfidenceLabel" />
+                </div>
+                <div class="form-group">
+                    <label id="Label3" for="result">Result:</label>
+                    <textarea class="form-control" rows="10" id="resultText" readonly="readonly"></textarea>
+                </div>
+                <input id="restartButton" type="button" class="btn btn-default" value="Restart" />
+            </fieldset>
+        </div>
+    </div>
+    <br />
+    <br />
+    <div id="buttonDiv">
+        <div class="container">
+            <div class="form-group">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="txtsearchWord" placeholder="word to search" />
+                    </div>
+                    <div class="col-md-6">
+                        <button id="btnSearchWord" class="btn btn-default">Search Word</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="hocrResult">
+            <div id="outerdivhocr">
+                <img class="source_image" id="img_hocr" />
+            </div>
+        </div>
+        <div style="visibility:hidden;" id="divTessHOCR"></div>
+    </div>
+</body>
+</html>
