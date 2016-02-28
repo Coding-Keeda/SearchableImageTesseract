@@ -145,10 +145,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="bin\x64\liblept172.dll" />
-    <Content Include="bin\x64\libtesseract304.dll" />
-    <Content Include="bin\x86\liblept172.dll" />
-    <Content Include="bin\x86\libtesseract304.dll" />
     <Content Include="Content\bootstrap-theme.css" />
     <Content Include="Content\bootstrap-theme.min.css" />
     <Content Include="Content\bootstrap.css" />
